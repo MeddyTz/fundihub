@@ -9,6 +9,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../models/fundi_model.dart';
+import '../../models/reel_model.dart';
 import '../../models/review_model.dart';
 import '../../providers/lang_provider.dart';
 import '../../providers/reel_provider.dart';
@@ -670,7 +671,7 @@ class _PortfolioTab extends StatelessWidget {
 // ── Reels Tab ─────────────────────────────────────────────────────────────────
 
 class _ReelsTab extends StatelessWidget {
-  final List<dynamic> reels;
+  final List<ReelModel> reels;
   final String fundiName;
 
   const _ReelsTab({required this.reels, required this.fundiName});
@@ -715,7 +716,12 @@ class _ReelsTab extends StatelessWidget {
       itemBuilder: (context, i) {
         final reel = reels[i];
         return GestureDetector(
-          onTap: () => context.push('/reels'),
+          onTap: () {
+            context.push('/reels', extra: {
+              'fundiReelsList': reels,
+              'initialIndex':   i,
+            });
+          },
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Stack(

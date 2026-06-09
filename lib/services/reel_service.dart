@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/firestore_constants.dart';
 import '../models/comment_model.dart';
@@ -333,6 +334,18 @@ class ReelService {
       _storage.deleteByPath(storagePath),
       _storage.deleteByPath(thumbnailPath),
     ]);
+  }
+
+  // ── Admin hard-delete via Cloud Function ───────────────────────────────────
+
+  /// Calls the 'hardDeleteReel' Cloud Function.
+  /// The Function deletes the Cloudinary video (using the API secret
+  /// stored server-side) then removes the Firestore doc + comments.
+  /// Returns the raw result map from the Function.
+  Future<Map<String, dynamic>> hardDeleteReel(String reelId) async {
+    final fn     = FirebaseFunctions.instance.httpsCallable('hardDeleteReel');
+    final result = await fn.call<Map<String, dynamic>>({'reelId': reelId});
+    return Map<String, dynamic>.from(result.data as Map);
   }
 
   // ── Viewed-reels tracking ─────────────────────────────────────────────────

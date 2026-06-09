@@ -384,7 +384,10 @@ class _AppWithRouterState extends State<_AppWithRouter> {
           path: '/reels',
           builder: (_, state) {
             final extra  = state.extra as Map<String, dynamic>?;
-            final fList  = extra?['fundiReelsList'] as List<ReelModel>?;
+            final rawList = extra?['fundiReelsList'];
+            final fList = rawList is List
+                ? rawList.whereType<ReelModel>().toList()
+                : null;
             final idx    = (extra?['initialIndex'] as int?) ?? 0;
             return ReelsScreen(
               fundiReelsList: fList,

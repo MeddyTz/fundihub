@@ -343,6 +343,12 @@ service cloud.firestore {
         && request.resource.data.isDeleted == true
         && request.resource.data.deletedBy == myUid();
 
+      // Cloud Function writes back cloudinary deletion status after
+      // processing the soft-delete trigger. These are server-only fields.
+      // The Cloud Function uses the Admin SDK which bypasses rules,
+      // so no extra client rule is required here — this comment documents
+      // the fields: cloudinaryDeleted, cloudinaryDeletedAt, cloudinaryDeleteError.
+
       // DELETE: admin only. Owner uses soft-delete above.
       allow delete: if isAdmin();
 

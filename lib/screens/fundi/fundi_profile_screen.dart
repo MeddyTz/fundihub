@@ -736,17 +736,11 @@ class _ReelsTab extends StatelessWidget {
         final reel = reels[i];
         return GestureDetector(
           onTap: () {
-            // Open ReelsScreen showing ONLY this fundi's active reels,
-            // starting at the exact reel the user tapped.
-            final prov  = context.read<ReelProvider>();
-            final fReels = prov.fundiReels
-                .where((r) => r.isActive && !r.isDeleted)
-                .toList();
-            final idx = fReels
-                .indexWhere((r) => r.reelId == reel.reelId);
+            // Pass the already-loaded reels list directly so the viewer
+            // shows only this fundi's reels starting at the tapped card.
             context.push('/reels', extra: {
-              'fundiReelsList': fReels,
-              'initialIndex':   idx < 0 ? 0 : idx,
+              'fundiReelsList': reels,
+              'initialIndex':   i,
             });
           },
           child: ClipRRect(
@@ -771,6 +765,51 @@ class _ReelsTab extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Delete button — owner only, top-left corner
+                if (myId.isNotEmpty && reel.fundiId == myId)
+                  Positioned(
+                    top: 6, left: 6,
+                    child: GestureDetector(
+                      onTap: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Delete Reel?'),
+                            content: const Text(
+                                'This reel will be removed permanently.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red),
+                                onPressed: () =>
+                                    Navigator.pop(context, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok == true && context.mounted) {
+                          context
+                              .read<ReelProvider>()
+                              .softDeleteReel(reel.reelId, myId);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.85),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.delete_rounded,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 // Status badge
                 Positioned(
                   top: 8,

@@ -515,6 +515,23 @@ class ReelProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Admin hard-delete: calls Cloud Function to wipe Cloudinary + Firestore.
+  /// Returns null on success, or an error string on failure.
+  Future<String?> hardDeleteReel(String reelId) async {
+    try {
+      final res = await _reelService.hardDeleteReel(reelId);
+      if (res['success'] == true) {
+        _removeFromAllLocalLists(reelId);
+        notifyListeners();
+        return null;
+      }
+      return 'Cloud Function returned failure: ${res['cloudinaryError'] ?? 'unknown'}';
+    } catch (e) {
+      dev.log('[ReelProvider] hardDeleteReel error: $e', name: 'REEL');
+      return e.toString();
+    }
+  }
+
   Future<void> approveReel(String reelId,
       {String approvedBy = ''}) async {
     await _reelService.approveReel(reelId, approvedBy: approvedBy);

@@ -143,6 +143,7 @@ class _AdminReelsScreenState extends State<AdminReelsScreen>
             status:   'deleted',
             emptyTitle:    'No Deleted Reels',
             emptySubtitle: 'Fundis have not deleted any reels.',
+            showHardDelete: true,
           ),
         ],
       ),
@@ -182,12 +183,14 @@ class _ReelList extends StatelessWidget {
   final String          status;
   final String          emptyTitle;
   final String          emptySubtitle;
+  final bool            showHardDelete;
 
   const _ReelList({
     required this.reels,
     required this.status,
     required this.emptyTitle,
     required this.emptySubtitle,
+    this.showHardDelete = false,
   });
 
   @override
@@ -215,7 +218,8 @@ class _ReelList extends StatelessWidget {
         AppTheme.spaceLG + 80,
       ),
       itemCount:   reels.length,
-      itemBuilder: (_, i) => _ReelReviewCard(reel: reels[i]),
+      itemBuilder: (_, i) => _ReelReviewCard(
+          reel: reels[i], showHardDelete: showHardDelete),
     );
   }
 }
@@ -226,14 +230,61 @@ class _ReelList extends StatelessWidget {
 
 class _ReelReviewCard extends StatefulWidget {
   final ReelModel reel;
-  const _ReelReviewCard({required this.reel});
+  final bool      showHardDelete;
+  const _ReelReviewCard({
+      required this.reel, this.showHardDelete = false});
 
   @override
   State<_ReelReviewCard> createState() => _ReelReviewCardState();
 }
 
 class _ReelReviewCardState extends State<_ReelReviewCard> {
-  bool _acting = false;
+  bool _acting   = false;
+  bool _deleting = false;
+
+  // ── Hard-delete (Deleted tab) ───────────────────────────────────────────────
+  Future<void> _hardDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXL)),
+        title: const Text('Permanently Delete?'),
+        content: const Text(
+            'This will delete the video from Cloudinary and remove the '
+            'Firestore document permanently.\n\nThis cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete Forever'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _deleting = true);
+    final err = await context
+        .read<ReelProvider>()
+        .hardDeleteReel(widget.reel.reelId);
+    if (!mounted) return;
+    setState(() => _deleting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err == null
+            ? '🗑 Reel permanently deleted'
+            : 'Delete failed: $err'),
+        backgroundColor:
+            err == null ? AppColors.success : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   // ── Approve ────────────────────────────────────────────────────────────────
   Future<void> _approve() async {
@@ -617,6 +668,39 @@ class _ReelReviewCardState extends State<_ReelReviewCard> {
             )
           else
             const SizedBox(height: AppTheme.spaceLG),
+
+          // ── Delete Forever (Deleted tab only) ─────────────────────
+          if (widget.showHardDelete)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppTheme.spaceLG, 0,
+                  AppTheme.spaceLG, AppTheme.spaceLG),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _deleting ? null : _hardDelete,
+                  icon: _deleting
+                      ? const SizedBox(
+                          width: 14, height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white))
+                      : const Icon(
+                          Icons.delete_forever_rounded, size: 16),
+                  label: Text(
+                      _deleting ? 'Deleting…' : 'Delete Forever'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusMD)),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
