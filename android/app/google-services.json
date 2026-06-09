@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "108838349548",
+    "project_id": "fundihub-2e7c0",
+    "storage_bucket": "fundihub-2e7c0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108838349548:android:967a14dd47c599388593c9",
+        "android_client_info": {
+          "package_name": "com.example.fundihub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108838349548:android:ba19db7a32c3072a8593c9",
+        "android_client_info": {
+          "package_name": "com.fundihub.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108838349548:android:b24a49532a19c2398593c9",
+        "android_client_info": {
+          "package_name": "com.meddytz.fundihub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

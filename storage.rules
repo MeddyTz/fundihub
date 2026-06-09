@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Profile images ──────────────────────────────────────────────────
+    match /profiles/{userId}/{allPaths=**} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // ── Reel videos ─────────────────────────────────────────────────────
+    // Authenticated users can upload to their own folder only.
+    // Path: reels/{userId}/{filename}
+    match /reels/{userId}/{filename} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size  < 200 * 1024 * 1024
+                   && request.resource.contentType.matches('video/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Reel thumbnails ─────────────────────────────────────────────────
+    match /reels/{userId}/thumbnails/{filename} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size  < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Portfolio images ────────────────────────────────────────────────
+    match /users/{userId}/portfolio/{filename} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Chat media ──────────────────────────────────────────────────────
+    match /chats/{chatId}/{filename} {
+      allow read, write: if request.auth != null
+                         && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

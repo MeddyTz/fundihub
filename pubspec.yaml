@@ -1,0 +1,79 @@
+name: fundihub
+description: FundiHub - Connect clients with skilled fundis/technicians
+publish_to: 'none'
+version: 1.0.2+3
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  cloud_firestore: ^6.3.0
+  firebase_storage: ^13.3.0
+  firebase_messaging: ^16.2.0
+  cloud_functions: 6.2.0
+
+  provider: ^6.1.1
+  go_router: ^17.2.2
+
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  badges: ^3.1.2
+  flutter_rating_bar: ^4.0.1
+
+  http: ^1.2.2
+  fluttertoast: ^9.0.0
+  intl: ^0.20.2
+  uuid: ^4.3.3
+  equatable: ^2.0.5
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  rxdart: ^0.28.0
+  dartz: ^0.10.1
+  connectivity_plus: ^7.1.1
+  timeago: ^3.6.0
+
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  google_maps_flutter: ^2.5.3
+  image_picker: ^1.0.7
+  record: ^6.0.0
+  audioplayers: ^6.1.0
+  file_picker: ^11.0.2
+  permission_handler: ^12.0.1
+  video_player: ^2.8.2
+  url_launcher: ^6.2.4
+  share_plus: ^12.0.2
+  chewie: ^1.8.1
+  visibility_detector: ^0.4.0+2
+
+  # Video player only - compression removed
+  # video_compress removed: caused hanging on Android
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

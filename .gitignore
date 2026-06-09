@@ -1,0 +1,54 @@
+# ─── SECURITY: Firebase Admin credentials ────────────────────────────────────
+# NEVER commit service account keys to version control.
+# These files contain private keys that give full admin access to Firebase.
+service-account-key.json
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
+
+# ─── Firebase ─────────────────────────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firebase-debug.*.log*
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.p12
+*.p8
+*.pfx
+
+# ─── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+
+# ─── Build artefacts ──────────────────────────────────────────────────────────
+build/Release
+lib-cov
+coverage
+.nyc_output
+.grunt
+bower_components
+.lock-wscript
+*.pid
+*.seed
+*.pid.lock
+pids
+
+# ─── DataConnect ──────────────────────────────────────────────────────────────
+.dataconnect

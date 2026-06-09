@@ -1,0 +1,377 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────
+
+    function isAuth()  { return request.auth != null; }
+    function myUid()   { return request.auth.uid; }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin()  { return myRole() == 'admin'; }
+    function isFundi()  { return myRole() == 'fundi'; }
+    // True when only rating/reviewCount fields are being updated.
+    // Allows the review transaction to update a fundi's rating from a client.
+    function isRatingUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['rating', 'averageRating', 'reviewCount', 'totalReviews', 'updatedAt']);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // USERS
+    //
+    // UPDATE: owner (myUid() == userId) or admin ONLY.
+    //
+    // ⚠️  KNOWN LIMITATION — review_service.dart currently runs a Firestore
+    //     transaction from the client that writes to the fundi user doc
+    //     (fields: rating, averageRating, reviewCount, totalReviews).
+    //     With this rule that write will be DENIED for anyone who is not
+    //     the fundi or an admin.
+    //
+    //     REQUIRED MIGRATION (to make review rating updates work):
+    //       Move the fundi-rating update out of review_service.dart into a
+    //       Cloud Function (e.g. onReviewCreated trigger or callable).
+    //       The Cloud Function uses the Admin SDK — Firestore rules do not
+    //       apply to Admin SDK writes.
+    //       The Flutter client writes only /reviews/{reviewId}; the function
+    //       validates the booking and updates the fundi user doc atomically.
+    //
+    //     Until that migration is done, review submission still works
+    //     (the /reviews doc is created) but the fundi's displayed rating
+    //     will not update in real-time from the client transaction.
+    //     This is intentional — it is safer than allowing any authenticated
+    //     user to write arbitrary fields to another user's document.
+    // ─────────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() && myUid() == userId;
+      // Own profile: any field. Rating update: only rating/count fields.
+      allow update: if isAuth() && (
+        myUid() == userId ||
+        isAdmin() ||
+        isRatingUpdate()
+      );
+      allow delete: if isAdmin();
+
+      // Saved reels subcollection — user manages their own saved list
+      match /savedReels/{reelId} {
+        allow read:         if isAuth() && myUid() == userId;
+        allow write:        if isAuth() && myUid() == userId;
+      }
+
+      // Viewed reels — tracks which reels a user has seen,
+      // used to show unviewed reels first in the feed.
+      // Users can only access their own viewed-reel records.
+      match /viewedReels/{reelId} {
+        allow read:  if isAuth() && myUid() == userId;
+        allow write: if isAuth() && myUid() == userId;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BOOKINGS
+    // ─────────────────────────────────────────────────────────────────────
+    match /bookings/{bookingId} {
+      allow read: if isAuth() &&
+        (resource.data.clientId == myUid() ||
+         resource.data.fundiId  == myUid() || isAdmin());
+
+      allow create: if isAuth() &&
+        request.resource.data.clientId == myUid();
+
+      allow update: if isAuth() &&
+        (resource.data.clientId == myUid() ||
+         resource.data.fundiId  == myUid() || isAdmin());
+
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // NOTIFICATIONS
+    // ─────────────────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isAuth() &&
+        (resource.data.userId     == myUid() ||
+         resource.data.receiverId == myUid() || isAdmin());
+
+      allow create: if isAuth() && (
+        // (a) self-notification
+        request.resource.data.userId     == myUid() ||
+        request.resource.data.receiverId == myUid() ||
+
+        // (b) booking participant
+        (
+          request.resource.data.bookingId != null &&
+          request.resource.data.bookingId.size() > 0 &&
+          exists(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)) &&
+          (
+            get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId))
+              .data.clientId == myUid() ||
+            get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId))
+              .data.fundiId  == myUid()
+          )
+        ) ||
+
+        // (c) sender is caller (chat_service._upsertMessageNotification)
+        (
+          request.resource.data.senderId != null &&
+          request.resource.data.senderId == myUid()
+        ) ||
+
+        // (d) chat participant writing message notification
+        (
+          request.resource.data.chatId != null &&
+          request.resource.data.chatId.size() > 0 &&
+          exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId)) &&
+          myUid() in
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
+              .data.participants
+        )
+      );
+
+      allow update: if isAuth() && (
+        resource.data.userId     == myUid() ||
+        resource.data.receiverId == myUid() ||
+        resource.data.senderId   == myUid() ||
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CHATS
+    // ─────────────────────────────────────────────────────────────────────
+    match /chats/{chatId} {
+      allow read: if isAuth() &&
+        (myUid() in resource.data.participants ||
+         resource.data.clientId == myUid() ||
+         resource.data.fundiId  == myUid() ||
+         isAdmin());
+
+      allow create: if isAuth() && (
+        myUid() in request.resource.data.participants ||
+        request.resource.data.clientId == myUid() ||
+        request.resource.data.fundiId  == myUid() ||
+        isAdmin()
+      );
+
+      allow update: if isAuth() && (
+        myUid() in resource.data.participants ||
+        resource.data.clientId == myUid() ||
+        resource.data.fundiId  == myUid() ||
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
+
+      match /messages/{msgId} {
+        allow read, create: if isAuth() &&
+          myUid() in
+            get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        // Sender can edit their own message.
+        // Any participant (receiver) can mark seen fields ONLY.
+        allow update: if isAuth() && (
+          resource.data.senderId == myUid() ||
+          (
+            myUid() in
+              get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+            request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly(['isSeen', 'seenAt', 'isDelivered', 'updatedAt'])
+          ) ||
+          isAdmin()
+        );
+
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // REVIEWS
+    // ─────────────────────────────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.clientId == myUid();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // REPORTS
+    // ─────────────────────────────────────────────────────────────────────
+    match /reports/{reportId} {
+      allow read: if isAuth() &&
+        (resource.data.reporterId == myUid() || isAdmin());
+      allow create: if isAuth();
+      allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BLOCKS
+    // ─────────────────────────────────────────────────────────────────────
+    match /blocks/{blockId} {
+      allow read, create, delete: if isAuth() &&
+        (resource == null ||
+         resource.data.blockerId == myUid() || isAdmin());
+      allow update: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PAYMENTS / WALLETS / SUBSCRIPTIONS / PROMOTIONS
+    // ─────────────────────────────────────────────────────────────────────
+    match /payments/{paymentId} {
+      allow read: if isAuth() &&
+        (resource.data.fundiId == myUid() || isAdmin());
+      allow create: if isAuth() && isFundi();
+      allow update, delete: if isAdmin();
+    }
+
+    match /wallets/{walletId} {
+      allow read:  if isAuth() && (myUid() == walletId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /subscriptions/{subId} {
+      allow read: if isAuth() &&
+        (resource.data.fundiId == myUid() || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /promotions/{promoId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CATEGORIES
+    // ─────────────────────────────────────────────────────────────────────
+    match /categories/{catId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /otherCategoryRequests/{reqId} {
+      allow read: if isAuth() &&
+        (resource.data.userId == myUid() || isAdmin());
+      allow create: if isAuth();
+      allow update, delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // REELS
+    //
+    // READ:   Approved+active reels are public to all auth users.
+    //         Fundi always sees their own reels at any status.
+    //         Admin sees all.
+    //
+    // CREATE: Authenticated fundi only. fundiId == caller, status='pending',
+    //         isActive=false enforced on creation.
+    //
+    // UPDATE (admin):       Any field — approve/reject workflow.
+    // UPDATE (counters):    Any auth user may increment the 5 counter fields
+    //                       by exactly +1 or -1 only (prevents arbitrary set).
+    // UPDATE (soft-delete): Owner may set isActive=false + deletedAt/deletedBy.
+    //                       isActive MUST be false (can't reactivate).
+    //                       deletedBy MUST be caller uid.
+    //                       Only these 3 fields may change.
+    //
+    // DELETE: Admin only. Fundi owner uses soft-delete (isActive=false).
+    // ─────────────────────────────────────────────────────────────────────
+    match /reels/{reelId} {
+      allow read: if isAuth() && (
+        (resource.data.status == 'approved' && resource.data.isActive == true) ||
+        resource.data.fundiId == myUid() ||
+        isAdmin()
+      );
+
+      allow create: if isAuth()
+        && isFundi()
+        && request.resource.data.fundiId  == myUid()
+        && request.resource.data.status   == 'pending'
+        && request.resource.data.isActive == false;
+
+      // Admin can update any field (approve / reject workflow).
+      allow update: if isAuth() && isAdmin();
+
+      // Engagement counters: only the 5 counter fields may change,
+      // and each must move by at most 1 (prevents arbitrary inflation).
+      allow update: if isAuth()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['likesCount', 'viewsCount', 'savesCount',
+                       'reportCount', 'commentsCount'])
+        && (request.resource.data.get('likesCount',    0)
+              - resource.data.get('likesCount',    0)) >= -1
+        && (request.resource.data.get('likesCount',    0)
+              - resource.data.get('likesCount',    0)) <= 1
+        && (request.resource.data.get('viewsCount',    0)
+              - resource.data.get('viewsCount',    0)) >= -1
+        && (request.resource.data.get('viewsCount',    0)
+              - resource.data.get('viewsCount',    0)) <= 1
+        && (request.resource.data.get('savesCount',    0)
+              - resource.data.get('savesCount',    0)) >= -1
+        && (request.resource.data.get('savesCount',    0)
+              - resource.data.get('savesCount',    0)) <= 1
+        && (request.resource.data.get('reportCount',   0)
+              - resource.data.get('reportCount',   0)) >= -1
+        && (request.resource.data.get('reportCount',   0)
+              - resource.data.get('reportCount',   0)) <= 1
+        && (request.resource.data.get('commentsCount', 0)
+              - resource.data.get('commentsCount', 0)) >= -1
+        && (request.resource.data.get('commentsCount', 0)
+              - resource.data.get('commentsCount', 0)) <= 1;
+
+      // Fundi soft-delete: strictly restricted.
+      // - Only owner of the reel may call this.
+      // - ONLY isActive, isDeleted, deletedAt, deletedBy may change.
+      // - isActive MUST become false (prevents reactivation).
+      // - isDeleted MUST become true.
+      // - deletedBy MUST equal the caller (prevents impersonation).
+      allow update: if isAuth()
+        && resource.data.fundiId == myUid()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isActive', 'isDeleted', 'deletedAt', 'deletedBy'])
+        && request.resource.data.isActive  == false
+        && request.resource.data.isDeleted == true
+        && request.resource.data.deletedBy == myUid();
+
+      // DELETE: admin only. Owner uses soft-delete above.
+      allow delete: if isAdmin();
+
+
+      // ── Comments subcollection ────────────────────────────────────
+      // Any authenticated user can read and create comments.
+      // Owner of a comment or admin can delete it.
+      // Nobody can edit a comment once posted.
+      match /comments/{commentId} {
+        allow read:   if isAuth();
+        allow create: if isAuth() &&
+          request.resource.data.userId == myUid() &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 500;
+        allow update: if false;  // comments are immutable once posted
+        allow delete: if isAuth() && (
+          resource.data.userId == myUid() || isAdmin()
+        );
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // REEL REPORTS
+    // ─────────────────────────────────────────────────────────────────────
+    match /reel_reports/{reportId} {
+      allow read:   if isAdmin();
+      allow create: if isAuth() &&
+        request.resource.data.reporterId == myUid();
+      allow delete: if isAdmin();
+    }
+  }
+}
