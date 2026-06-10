@@ -22,8 +22,12 @@ workflows:
 
       - name: Build iOS no codesign
         script: |
-          rm -rf ~/Library/Caches/org.swift.swiftpm
-          rm -rf ~/Library/Developer/Xcode/DerivedData
+          rm -rf $HOME/Library/Caches/org.swift.swiftpm
+          rm -rf $HOME/Library/org.swift.swiftpm
+          rm -rf $HOME/Library/Developer/Xcode/DerivedData
+          rm -rf $HOME/Library/Caches/com.apple.dt.Xcode
+          flutter clean
+          flutter pub get
           flutter build ios --debug --no-codesign
 
     artifacts:
