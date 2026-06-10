@@ -17,7 +17,7 @@ workflows:
       - name: Install pods
         script: |
           cd ios
-          pod deintegrate || true
+          rm -f Podfile.lock
           pod install --repo-update
           cd ..
 
