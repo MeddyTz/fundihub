@@ -10,10 +10,18 @@ workflows:
       - name: Get packages
         script: flutter pub get
       - name: Install pods
-        script: |
-          cd ios
-          pod install
-          cd ..
+  script: |
+    cd ios
+
+    if [ ! -f Podfile ]; then
+      pod init
+    fi
+
+    echo "platform :ios, '14.0'" > Podfile
+
+    pod install --repo-update
+
+    cd ..
       - name: Build iOS no codesign
         script: flutter build ios --debug --no-codesign
     artifacts:
