@@ -24,8 +24,11 @@ workflows:
         script: |
           sed -i '' 's/platform :ios, .*/platform :ios, '\''15.0'\''/' ios/Podfile
 
-      - name: Build iOS no codesign
-        script: flutter build ios --debug --no-codesign
+     - name: Build iOS no codesign
+        script: |
+          rm -rf ~/Library/Caches/org.swift.swiftpm
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+          flutter build ios --debug --no-codesign
 
     artifacts:
       - build/ios/iphoneos/*.app
