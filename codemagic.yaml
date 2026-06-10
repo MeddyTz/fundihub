@@ -10,24 +10,19 @@ workflows:
 
     scripts:
       - name: Get packages
-        script: flutter pub get
+        script: |
+          flutter clean
+          flutter pub get
 
       - name: Install pods
         script: |
           cd ios
-          rm -f Podfile
-          flutter pub get
+          pod deintegrate || true
           pod install --repo-update
           cd ..
 
       - name: Build iOS no codesign
         script: |
-          rm -rf $HOME/Library/Caches/org.swift.swiftpm
-          rm -rf $HOME/Library/org.swift.swiftpm
-          rm -rf $HOME/Library/Developer/Xcode/DerivedData
-          rm -rf $HOME/Library/Caches/com.apple.dt.Xcode
-          flutter clean
-          flutter pub get
           flutter build ios --debug --no-codesign
 
     artifacts:
