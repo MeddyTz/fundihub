@@ -12,11 +12,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
- firebase_core: ^4.0.0
-firebase_auth: ^6.5.2
-cloud_firestore: ^6.5.0
-firebase_messaging: ^16.3.0
-cloud_functions: ^6.3.2
+  firebase_core: ^4.10.0
+  firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
+  firebase_messaging: ^16.3.0
+  cloud_functions: ^6.3.2
 
   provider: ^6.1.1
   go_router: ^17.2.2
@@ -55,9 +55,6 @@ cloud_functions: ^6.3.2
   google_sign_in: ^6.2.1
   chewie: ^1.8.1
   visibility_detector: ^0.4.0+2
-
-  # Video player only - compression removed
-  # video_compress removed: caused hanging on Android
 
 dev_dependencies:
   flutter_test:
