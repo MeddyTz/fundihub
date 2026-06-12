@@ -58,16 +58,22 @@ class ReelService {
 
   // ── Approved reels (public feed) ──────────────────────────────────────────
 
+  /// Approved reels public feed.
+  /// Uses only status + isActive filters so no composite index is needed.
+  /// isDeleted is filtered client-side to avoid a 3-field composite index
+  /// that would otherwise return empty results if not yet deployed.
   Stream<List<ReelModel>> approvedReelsStream({int limit = _pageSize}) =>
       _db
           .collection(FirestoreConstants.reels)
-          .where('status',    isEqualTo: AppConstants.reelApproved)
-          .where('isActive',  isEqualTo: true)
-          .where('isDeleted', isEqualTo: false)
+          .where('status',   isEqualTo: AppConstants.reelApproved)
+          .where('isActive', isEqualTo: true)
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .snapshots()
-          .map((s) => s.docs.map((d) => ReelModel.fromMap(d.data())).toList());
+          .map((s) => s.docs
+              .map((d) => ReelModel.fromMap(d.data()))
+              .where((r) => !r.isDeleted)  // client-side isDeleted filter
+              .toList());
 
   /// Category-filtered approved stream for the user-facing feed.
   Stream<List<ReelModel>> approvedByCategoryStream(
@@ -85,7 +91,10 @@ class ReelService {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((s) => s.docs.map((d) => ReelModel.fromMap(d.data())).toList());
+        .map((s) => s.docs
+            .map((d) => ReelModel.fromMap(d.data()))
+            .where((r) => !r.isDeleted)
+            .toList());
   }
 
   // ── Pagination ────────────────────────────────────────────────────────────
@@ -315,6 +324,22 @@ class ReelService {
 
   /// Fundi soft-delete: sets isDeleted=true + isActive=false.
   /// The document is kept so admin can audit in the Deleted tab.
+  /// Calls the 'hardDeleteReel' Cloud Function which deletes the
+  /// Cloudinary video + Firestore comments + reel doc server-side.
+  Future<String?> hardDeleteReel(String reelId) async {
+    try {
+      final fn = FirebaseFunctions.instance
+          .httpsCallable('hardDeleteReel');
+      final result = await fn
+          .call<Map<dynamic, dynamic>>({'reelId': reelId});
+      final data = Map<String, dynamic>.from(result.data as Map);
+      return data['success'] == true ? null
+          : data['cloudinaryError']?.toString() ?? 'Unknown error';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<void> softDeleteReel(String reelId, String userId) async {
     await _db.collection(FirestoreConstants.reels).doc(reelId).update({
       'isActive':  false,
@@ -324,6 +349,11 @@ class ReelService {
     });
   }
 
+  /// Calls the 'hardDeleteReel' Cloud Function which:
+  ///   1. Deletes the Cloudinary video (API secret stays server-side)
+  ///   2. Deletes Firestore comments sub-collection
+  ///   3. Deletes the reel document
+  /// Returns null on success, or an error string on failure.
   Future<void> deleteReel({
     required String reelId,
     required String storagePath,
@@ -334,18 +364,6 @@ class ReelService {
       _storage.deleteByPath(storagePath),
       _storage.deleteByPath(thumbnailPath),
     ]);
-  }
-
-  // ── Admin hard-delete via Cloud Function ───────────────────────────────────
-
-  /// Calls the 'hardDeleteReel' Cloud Function.
-  /// The Function deletes the Cloudinary video (using the API secret
-  /// stored server-side) then removes the Firestore doc + comments.
-  /// Returns the raw result map from the Function.
-  Future<Map<String, dynamic>> hardDeleteReel(String reelId) async {
-    final fn     = FirebaseFunctions.instance.httpsCallable('hardDeleteReel');
-    final result = await fn.call<Map<String, dynamic>>({'reelId': reelId});
-    return Map<String, dynamic>.from(result.data as Map);
   }
 
   // ── Viewed-reels tracking ─────────────────────────────────────────────────

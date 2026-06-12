@@ -761,7 +761,7 @@ class _EmptyChatView extends StatelessWidget {
             ),
             const SizedBox(height: AppTheme.spaceSM),
             Text(
-              'Discuss job details with $otherName. Phone numbers are blocked until both parties confirm the agreement.',
+              'Discuss job details with $otherName. Contact details are available after the fundi accepts the booking.',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium
                   .copyWith(color: AppColors.textSecondary),

@@ -11,6 +11,7 @@ import 'admin_payments_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_reports_screen.dart';
+import 'admin_deleted_accounts_screen.dart';
 
 class AdminMainShell extends StatefulWidget {
   const AdminMainShell({super.key});
@@ -36,6 +37,8 @@ class _AdminMainShellState extends State<AdminMainShell>
         Color(0xFF6A1B9A)),
     _ANavItem(Icons.flag_outlined, Icons.flag_rounded, 'Reports',
         Color(0xFFC62828)),
+    _ANavItem(Icons.delete_outline_rounded, Icons.delete_rounded,
+        'Deleted', Colors.brown),
   ];
 
   @override
@@ -74,6 +77,7 @@ class _AdminMainShellState extends State<AdminMainShell>
         const AdminUsersScreen(),
         const AdminCategoriesScreen(),
         const AdminReportsScreen(),
+        const AdminDeletedAccountsScreen(),
       ];
 
   @override

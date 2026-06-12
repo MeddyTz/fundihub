@@ -53,6 +53,8 @@ class ReelProvider extends ChangeNotifier {
   List<ReelModel> _deletedReels       = [];  // admin Deleted tab
   bool _hasMore     = true;
   bool _loadingMore = false;
+  bool _feedError   = false;   // true when stream failed
+  bool get feedError => _feedError;
 
   StreamSubscription<List<ReelModel>>? _approvedSub;
   StreamSubscription<List<ReelModel>>? _approvedAdminSub;
@@ -142,7 +144,16 @@ class ReelProvider extends ChangeNotifier {
   }
 
   void subscribeApprovedReels() {
-    _approvedSub?.cancel();
+    // If re-entering the Reels tab and we already have a live subscription
+    // with cached data, emit immediately so screen shows reels without delay.
+    if (_approvedSub != null) {
+      if (_approvedReels.isNotEmpty) notifyListeners();
+      return;
+    }
+    // First call: push any in-memory cache immediately so the screen
+    // renders during the first Firestore round-trip (~200–600 ms).
+    if (_approvedReels.isNotEmpty) notifyListeners();
+
     _approvedSub = _reelService.approvedReelsStream().listen(
       (reels) {
         // Apply personalised shuffle — unviewed first, then seen.
@@ -150,9 +161,21 @@ class ReelProvider extends ChangeNotifier {
         _hasMore = reels.length >= 10;
         notifyListeners();
       },
-      onError: (e) =>
-          dev.log('[ReelProvider] approvedReels error: $e', name: 'REEL'),
+      onError: (e) {
+        dev.log('[ReelProvider] approvedReels error: $e', name: 'REEL');
+        _feedError = true;
+        notifyListeners();
+      },
     );
+  }
+
+  /// Force a fresh re-subscription (pull-to-refresh / retry).
+  void refreshApprovedReels() {
+    _approvedSub?.cancel();
+    _approvedSub = null;
+    _feedError   = false;
+    notifyListeners();
+    subscribeApprovedReels();
   }
 
   void subscribeApprovedAdminReels() {
@@ -164,13 +187,27 @@ class ReelProvider extends ChangeNotifier {
     );
   }
 
+  /// Clear immediately then subscribe to the correct fundi's stream.
+  /// The instant clear prevents stale reels from a previous fundi
+  /// showing during the ~300ms before Firestore emits the first snapshot.
   void subscribeFundiReels(String fundiId) {
     _fundiSub?.cancel();
+    _fundiReels = [];      // wipe NOW — before stream fires
+    notifyListeners();     // UI shows empty/loading immediately
     _fundiSub = _reelService.fundiReelsStream(fundiId).listen(
       (reels) { _fundiReels = reels; notifyListeners(); },
       onError: (e) =>
           dev.log('[ReelProvider] fundiReels error: $e', name: 'REEL'),
     );
+  }
+
+  /// Call from a screen's dispose() to wipe the cache when leaving
+  /// a fundi profile, so the next profile opened starts clean.
+  void clearFundiReels() {
+    _fundiSub?.cancel();
+    _fundiSub   = null;
+    _fundiReels = [];
+    notifyListeners();
   }
 
   void subscribePendingReels() {
@@ -515,23 +552,19 @@ class ReelProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Admin hard-delete: calls Cloud Function to wipe Cloudinary + Firestore.
-  /// Returns null on success, or an error string on failure.
+  /// Admin hard-delete via Cloud Function. Returns null on success.
   Future<String?> hardDeleteReel(String reelId) async {
-    try {
-      final res = await _reelService.hardDeleteReel(reelId);
-      if (res['success'] == true) {
-        _removeFromAllLocalLists(reelId);
-        notifyListeners();
-        return null;
-      }
-      return 'Cloud Function returned failure: ${res['cloudinaryError'] ?? 'unknown'}';
-    } catch (e) {
-      dev.log('[ReelProvider] hardDeleteReel error: $e', name: 'REEL');
-      return e.toString();
+    final err = await _reelService.hardDeleteReel(reelId);
+    if (err == null) {
+      _removeFromAllLocalLists(reelId);
+      notifyListeners();
     }
+    return err;
   }
 
+  /// Admin hard-delete: calls the Cloud Function to wipe Cloudinary +
+  /// Firestore doc + comments. Removes from all local lists instantly.
+  /// Returns null on success, or an error string on failure.
   Future<void> approveReel(String reelId,
       {String approvedBy = ''}) async {
     await _reelService.approveReel(reelId, approvedBy: approvedBy);

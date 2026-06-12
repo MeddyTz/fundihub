@@ -18,9 +18,26 @@ service cloud.firestore {
     function isFundi()  { return myRole() == 'fundi'; }
     // True when only rating/reviewCount fields are being updated.
     // Allows the review transaction to update a fundi's rating from a client.
+    function isAccountDeletion(userId) {
+      return myUid() == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['isDeleted','isActive','deletedAt','accountStatus'])
+          && request.resource.data.isDeleted     == true
+          && request.resource.data.isActive      == false
+          && request.resource.data.accountStatus == 'deleted';
+    }
+
     function isRatingUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['rating', 'averageRating', 'reviewCount', 'totalReviews', 'updatedAt']);
+    }
+
+    // True when a Google-authenticated user is assigning their own role
+    // for the first time. Role MUST be client or fundi — never admin.
+    function isGoogleRoleAssignment(userId) {
+      return myUid() == userId
+          && request.resource.data.get('role', '') in ['client', 'fundi']
+          && request.resource.data.get('authProvider', '') == 'google';
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -50,12 +67,18 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read:   if isAuth();
-      allow create: if isAuth() && myUid() == userId;
-      // Own profile: any field. Rating update: only rating/count fields.
+      // Own user — or Google role assignment (role must be client/fundi)
+      allow create: if isAuth() && (
+        myUid() == userId ||
+        isGoogleRoleAssignment(userId)
+      );
+      // Own profile | rating update | account soft-delete | Google role assign
       allow update: if isAuth() && (
         myUid() == userId ||
         isAdmin() ||
-        isRatingUpdate()
+        isRatingUpdate() ||
+        isAccountDeletion(userId) ||
+        isGoogleRoleAssignment(userId)
       );
       allow delete: if isAdmin();
 

@@ -358,15 +358,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     type:      AppButtonType.outline,
                     onPressed: loading ? null : () => context.go('/register')),
                 const SizedBox(height: AppTheme.spaceMD),
-                // Guest browsing
+                // ── OR divider ─────────────────────────────────────────
+                const SizedBox(height: AppTheme.spaceXL),
+                Row(children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spaceMD),
+                    child: Text('or',
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary)),
+                  ),
+                  const Expanded(child: Divider()),
+                ]),
+                const SizedBox(height: AppTheme.spaceXL),
+                // ── Google Sign-In ──────────────────────────────────────
+                _GoogleSignInButton(loading: loading),
+                const SizedBox(height: AppTheme.spaceXL),
+                // ── Guest browsing → full client dashboard ─────────────
                 TextButton(
-                  onPressed: loading ? null : () => context.go('/client/all-categories'),
-                  child: Text(
-                    'Browse without an account',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color:      AppColors.textSecondary,
-                      decoration: TextDecoration.underline,
-                    ),
+                  onPressed: loading ? null : () =>
+                      context.go('/client/dashboard'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.visibility_outlined,
+                          size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 6),
+                      Text('Browse as Guest',
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600)),
+                    ],
                   ),
                 ),
                 const SizedBox(height: AppTheme.space3XL),
@@ -428,4 +451,74 @@ class _LanguageToggleButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Google Sign-In button ─────────────────────────────────────────────────────
+
+class _GoogleSignInButton extends StatefulWidget {
+  final bool loading;
+  const _GoogleSignInButton({required this.loading});
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
+  bool _busy = false;
+
+  Future<void> _signIn() async {
+    if (widget.loading || _busy) return;
+    setState(() => _busy = true);
+    final auth = context.read<AuthProvider>();
+    final ok   = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!ok && auth.errorMessage != null) {
+      AppUtils.showSnackBar(context, auth.errorMessage!, isError: true);
+      auth.clearError();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+        onPressed: widget.loading || _busy ? null : _signIn,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 52),
+          side:  const BorderSide(color: AppColors.border, width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
+          backgroundColor: AppColors.white,
+          foregroundColor: AppColors.textPrimary,
+        ),
+        child: _busy
+            ? const SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: AppColors.primary))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 22, height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border),
+                      color: Colors.white,
+                    ),
+                    child: const Center(
+                      child: Text('G',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF4285F4))),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Continue with Google',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                ],
+              ),
+      );
 }

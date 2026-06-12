@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/validators.dart';
+import '../../core/utils/app_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lang_provider.dart';
 import '../../widgets/auth/auth_header.dart';
@@ -595,3 +596,65 @@ class _LangToggle extends StatelessWidget {
     );
   }
 }
+
+
+// ── Google Sign-Up button on register screen ─────────────────────────────────
+
+class _RegisterGoogleButton extends StatefulWidget {
+  @override
+  State<_RegisterGoogleButton> createState() => _RegisterGoogleButtonState();
+}
+
+class _RegisterGoogleButtonState extends State<_RegisterGoogleButton> {
+  bool _busy = false;
+
+  Future<void> _signIn() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final auth = context.read<AuthProvider>();
+    final ok   = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!ok && auth.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(auth.errorMessage!),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      auth.clearError();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+        onPressed: _busy ? null : _signIn,
+        style: OutlinedButton.styleFrom(
+          padding:     const EdgeInsets.symmetric(vertical: 14),
+          side:        const BorderSide(color: AppColors.border, width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
+          backgroundColor: AppColors.white,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _busy
+                ? const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary))
+                : Image.asset('assets/images/google_logo.png',
+                    width: 20, height: 20,
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.g_mobiledata_rounded,
+                        size: 24, color: Colors.red)),
+            const SizedBox(width: 10),
+            const Text(
+              'Continue with Google',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+}
+

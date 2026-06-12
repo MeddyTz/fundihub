@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_utils.dart';
 import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/reel_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dropdown.dart';
 import '../../widgets/auth/auth_header.dart';
@@ -136,8 +137,8 @@ class _FundiProfileCompletionScreenState
       detectedAddress: _addr,
     );
 
-    // Only show error when save truly failed AND widget still mounted.
-    // If !mounted, the router already navigated away = success.
+    // If !mounted the router already navigated away — that is success.
+    // NEVER show an error snackbar in that case.
     if (!mounted) return;
     if (!ok) {
       AppUtils.showSnackBar(
@@ -145,6 +146,9 @@ class _FundiProfileCompletionScreenState
         auth.errorMessage ?? 'Failed to save. Please try again.',
         isError: true,
       );
+    } else {
+      // Clear stale reels cache so the new fundi's profile starts empty.
+      context.read<ReelProvider>().clearFundiReels();
     }
   }
 

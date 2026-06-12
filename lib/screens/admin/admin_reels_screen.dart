@@ -286,6 +286,7 @@ class _ReelReviewCardState extends State<_ReelReviewCard> {
     );
   }
 
+  // ── Hard-delete ────────────────────────────────────────────────────────────
   // ── Approve ────────────────────────────────────────────────────────────────
   Future<void> _approve() async {
     setState(() => _acting = true);

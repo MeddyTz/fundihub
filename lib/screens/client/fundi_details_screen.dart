@@ -269,7 +269,7 @@ class _FundiDetailsScreenState extends State<FundiDetailsScreen>
                       fontSize: 13, fontWeight: FontWeight.w700),
                   tabs: [
                     const Tab(text: 'About'),
-                    Tab(text: 'Portfolio (${_portfolioUrls.length})'),
+                    Tab(text: 'Workdone (${_portfolioUrls.length})'),
                     Tab(text: 'Reels (${fundiReels.length})'),
                   ],
                 ),
@@ -307,33 +307,30 @@ class _FundiDetailsScreenState extends State<FundiDetailsScreen>
       ),
 
       // ── Sticky Book CTA ──────────────────────────────────────────────
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: AppButton(
-            label: 'Book ${fundi.fullName.split(' ').first}',
-            leadingIcon: Icons.calendar_today_rounded,
-            onPressed: () {
-                // TASK 7: Guest browsing — require login to book
-                final auth = context.read<AuthProvider>();
+      // Only clients can book a fundi. Fundis and admins see nothing.
+      bottomNavigationBar: Builder(builder: (context) {
+        final auth = context.watch<AuthProvider>();
+        // Fundi users may browse profiles but cannot book.
+        // Admins have no booking intent either.
+        if (auth.isFundi || auth.isAdmin) return const SizedBox.shrink();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: AppButton(
+              label: 'Book ${fundi.fullName.split(' ').first}',
+              leadingIcon: Icons.calendar_today_rounded,
+              onPressed: () {
+                // Guest browsing — require login to book
                 if (auth.isGuest || !auth.isAuthenticated) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Please log in to book a fundi.'),
-                      action: SnackBarAction(
-                        label: 'Log In',
-                        onPressed: () => context.push('/login'),
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  _showGuestBookPrompt(context);
                   return;
                 }
                 context.push('/booking/create', extra: fundi);
               },
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -624,11 +621,11 @@ class _PortfolioTab extends StatelessWidget {
                   size: 40, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            const Text('No Portfolio Photos',
+            const Text('No Workdone Photos',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
             Text(
-                'This fundi hasn\'t added portfolio photos yet.\nAsk them to share examples in chat after booking.',
+                'This fundi hasn\'t added workdone photos yet.\nAsk them to share examples in chat after booking.',
                 style: AppTextStyles.bodySmall
                     .copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center),
@@ -986,4 +983,63 @@ class _ReviewCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+// ── Guest booking prompt ──────────────────────────────────────────────────────
+
+void _showGuestBookPrompt(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                shape: BoxShape.circle),
+            child: const Icon(Icons.calendar_today_rounded,
+                size: 28, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Create an account to continue',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Sign up to book this fundi and access all FundiHub features.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/register');
+              },
+              style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text('Create Account',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              GoRouter.of(context).go('/login');
+            },
+            child: const Text('Sign In'),
+          ),
+        ]),
+      ),
+    ),
+  );
 }

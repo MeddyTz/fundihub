@@ -32,7 +32,14 @@ class CategoryService {
         .where('accountStatus', isEqualTo: AppConstants.statusActive);
 
     if (category != null && category.isNotEmpty) {
-      q = q.where('category', isEqualTo: category);
+      // Normalise the 'Other/Others' category:
+      // Firestore can't do OR queries easily, so we fetch all if Others
+      // is selected and filter client-side to catch any variant spelling.
+      if (category.trim().toLowerCase() != 'other' &&
+          category.trim().toLowerCase() != 'others') {
+        q = q.where('category', isEqualTo: category);
+      }
+      // else: no category filter — fetch all and filter below
     }
     if (region != null && region.isNotEmpty) {
       q = q.where('region', isEqualTo: region);
@@ -42,9 +49,29 @@ class CategoryService {
     }
 
     final snap = await q.limit(limit).get();
+    // Build known-category lookup from AppConstants (canonical source).
+    // This ensures the Others bucket matches exactly what the app shows.
+    final knownLower = AppConstants.serviceCategories
+        .map((c) => c.trim().toLowerCase())
+        .toSet();
+
     List<FundiModel> fundis = snap.docs
         .map((d) => FundiModel.fromMap(d.data() as Map<String, dynamic>))
         .toList();
+
+    // If Others was selected, keep only fundis whose category is not
+    // a known main category (case-insensitive, trimmed).
+    if (category != null &&
+        (category.trim().toLowerCase() == 'other' ||
+         category.trim().toLowerCase() == 'others')) {
+      fundis = fundis.where((f) {
+        final cat = f.category.trim().toLowerCase();
+        return cat.isEmpty ||
+               cat == 'other' ||
+               cat == 'others' ||
+               !knownLower.contains(cat);
+      }).toList();
+    }
 
     // ── Text search filter ─────────────────────────────────────────────────
     if (query != null && query.isNotEmpty) {

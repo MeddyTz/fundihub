@@ -55,6 +55,30 @@ class NotificationProvider extends ChangeNotifier {
   int get chatUnread    => _chatUnread;
   int get reelUnread    => _reelUnread;
 
+  // ── Category filter ──────────────────────────────────────────────────
+  // null = All, 'booking' | 'reel' | 'chat' | 'system'
+  String? _activeFilter;
+  String? get activeFilter => _activeFilter;
+  void setFilter(String? filter) {
+    _activeFilter = filter;
+    notifyListeners();
+  }
+
+  // ── Notification settings toggles ────────────────────────────────────
+  bool notifBookings  = true;
+  bool notifReels     = true;
+  bool notifReviews   = true;
+  bool notifMarketing = false;
+  void toggleSetting(String key, bool value) {
+    switch (key) {
+      case 'bookings':  notifBookings  = value; break;
+      case 'reels':     notifReels     = value; break;
+      case 'reviews':   notifReviews   = value; break;
+      case 'marketing': notifMarketing = value; break;
+    }
+    notifyListeners();
+  }
+
   // Track type-to-docId mapping for category counts
   final Map<String, String> _docTypes = {}; // docId -> type
 
@@ -134,6 +158,37 @@ class NotificationProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────────────────────────────────
   // UNSUBSCRIBE — call on logout
   // ─────────────────────────────────────────────────────────────────────────
+  /// Mark a single notification as read.
+  Future<void> markSingleRead(String docId, String uid) async {
+    try {
+      final q = await _db
+          .collection(FirestoreConstants.notifications)
+          .where('notifId', isEqualTo: docId)
+          .limit(1).get();
+      if (q.docs.isNotEmpty) {
+        await q.docs.first.reference
+            .update({'isRead': true, 'read': true});
+      }
+    } catch (e) {
+      dev.log('[NotifProvider] markSingleRead error: $e', name: 'NOTIF');
+    }
+  }
+
+  /// Delete a single notification document.
+  Future<void> deleteNotification(String docId) async {
+    try {
+      final q = await _db
+          .collection(FirestoreConstants.notifications)
+          .where('notifId', isEqualTo: docId)
+          .limit(1).get();
+      if (q.docs.isNotEmpty) {
+        await q.docs.first.reference.delete();
+      }
+    } catch (e) {
+      dev.log('[NotifProvider] deleteNotification error: $e', name: 'NOTIF');
+    }
+  }
+
   void unsubscribe() {
     dev.log('[NotifProvider] Unsubscribing uid=$_subscribedUid', name: 'NOTIF');
     _cancelAll();

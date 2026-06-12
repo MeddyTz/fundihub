@@ -37,6 +37,7 @@ import 'screens/admin/admin_main_shell.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/role_selection_screen.dart';
+import 'screens/auth/google_role_selection_screen.dart';
 import 'screens/auth/suspended_screen.dart';
 import 'screens/client/all_categories_screen.dart';
 import 'screens/client/category_fundis_screen.dart';
@@ -53,6 +54,7 @@ import 'screens/fundi/fundi_main_shell.dart';
 import 'screens/fundi/fundi_profile_screen.dart';
 import 'screens/fundi/fundi_promotion_screen.dart';
 import 'screens/fundi/fundi_upload_reel_screen.dart';
+import 'screens/fundi/work_photos_screen.dart';
 import 'screens/fundi/fundi_wallet_screen.dart';
 import 'screens/profile/client_profile_completion_screen.dart';
 import 'screens/profile/fundi_profile_completion_screen.dart';
@@ -266,8 +268,27 @@ class _AppWithRouterState extends State<_AppWithRouter> {
 
   case app_auth.AuthStatus.unauthenticated:
   case app_auth.AuthStatus.error:
-  case app_auth.AuthStatus.guest:
     if (!isAuth) return '/login';
+    return null;
+
+  case app_auth.AuthStatus.guest:
+    // Guests can browse public content freely.
+    // Routes NOT in this list redirect to /login.
+    const guestOk = [
+      '/login', '/register', '/role-selection',
+      // Client home + browse
+      '/client/dashboard',
+      '/client/all-categories',
+      '/client/category-fundis',
+      '/client/fundi-details',
+      '/client/fundi-by-id',
+      '/client/nearby',
+      // Reels (read-only)
+      '/reels',
+    ];
+    if (!guestOk.any((p) => loc.startsWith(p))) {
+      return '/login';
+    }
     return null;
 
   case app_auth.AuthStatus.suspended:
@@ -312,6 +333,10 @@ class _AppWithRouterState extends State<_AppWithRouter> {
         GoRoute(path: '/suspended', builder: (_, __) => const SuspendedScreen()),
         GoRoute(path: '/profile-completion', builder: (context, _) {
           final a = context.read<app_auth.AuthProvider>();
+          // Google users with no role assigned must choose Client or Fundi
+          if (a.needsRoleSelection) {
+            return const GoogleRoleSelectionScreen();
+          }
           if (a.userModel?.isFundi == true) {
             return const FundiProfileCompletionScreen();
           }
@@ -376,6 +401,10 @@ class _AppWithRouterState extends State<_AppWithRouter> {
             path: '/fundi/profile',
             builder: (_, __) => const FundiProfileScreen()),
         GoRoute(
+            path: '/fundi/work-photos',
+            builder: (_, __) => const WorkPhotosScreen(),
+          ),
+          GoRoute(
             path: '/fundi/upload-reel',
             builder: (_, __) => const FundiUploadReelScreen()),
 

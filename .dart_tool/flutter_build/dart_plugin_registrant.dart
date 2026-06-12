@@ -9,6 +9,7 @@ import 'dart:io'; // flutter_ignore: dart_io_import.
 import 'package:geocoding_android/geocoding_android.dart' as geocoding_android;
 import 'package:geolocator_android/geolocator_android.dart' as geolocator_android;
 import 'package:google_maps_flutter_android/google_maps_flutter_android.dart' as google_maps_flutter_android;
+import 'package:google_sign_in_android/google_sign_in_android.dart' as google_sign_in_android;
 import 'package:image_picker_android/image_picker_android.dart' as image_picker_android;
 import 'package:path_provider_android/path_provider_android.dart' as path_provider_android;
 import 'package:shared_preferences_android/shared_preferences_android.dart' as shared_preferences_android;
@@ -18,6 +19,7 @@ import 'package:video_player_android/video_player_android.dart' as video_player_
 import 'package:geocoding_ios/geocoding_ios.dart' as geocoding_ios;
 import 'package:geolocator_apple/geolocator_apple.dart' as geolocator_apple;
 import 'package:google_maps_flutter_ios/google_maps_flutter_ios.dart' as google_maps_flutter_ios;
+import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:image_picker_ios/image_picker_ios.dart' as image_picker_ios;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:shared_preferences_foundation/shared_preferences_foundation.dart' as shared_preferences_foundation;
@@ -39,6 +41,7 @@ import 'package:wakelock_plus/wakelock_plus.dart' as wakelock_plus;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_macos/file_selector_macos.dart' as file_selector_macos;
 import 'package:geolocator_apple/geolocator_apple.dart' as geolocator_apple;
+import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:image_picker_macos/image_picker_macos.dart' as image_picker_macos;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:shared_preferences_foundation/shared_preferences_foundation.dart' as shared_preferences_foundation;
@@ -85,6 +88,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`google_maps_flutter_android` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_android.GoogleSignInAndroid.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_android` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -167,6 +179,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`google_maps_flutter_ios` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_ios.GoogleSignInIOS.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_ios` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -358,6 +379,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`geolocator_apple` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_ios.GoogleSignInIOS.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_ios` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }

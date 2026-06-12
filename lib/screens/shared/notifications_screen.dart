@@ -161,30 +161,48 @@ class _State extends State<NotificationsScreen> {
             ),
         ],
       ),
-      body: _loading
-          ? const AppLoaderCenter()
-          : _notifs.isEmpty
-              ? AppEmptyState(
-                  icon:      Icons.notifications_none_rounded,
-                  title:     l10n.noNotifications,
-                  subtitle:  'You are all caught up!',
-                  iconColor: AppColors.grey400,
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    _sub?.cancel();
-                    _setup();
-                  },
-                  child: ListView.separated(
-                    padding:          const EdgeInsets.symmetric(vertical: 8),
-                    itemCount:        _notifs.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final n     = _notifs[i];
-                      final color = _color(n.type);
-                      return InkWell(
-                        onTap: () => _onTap(n),
-                        child: Container(
+      body: Column(children: [
+          // ── Category filter chips ─────────────────────────────────
+          _FilterChips(notifProv: context.watch<NotificationProvider>()),
+          // ── Body ──────────────────────────────────────────────────
+          Expanded(
+            child: _loading
+                ? const AppLoaderCenter()
+                : _filtered(_notifs, context.watch<NotificationProvider>().activeFilter).isEmpty
+                    ? AppEmptyState(
+                        icon:      Icons.notifications_none_rounded,
+                        title:     l10n.noNotifications,
+                        subtitle:  'You are all caught up!',
+                        iconColor: AppColors.grey400,
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () async { _sub?.cancel(); _setup(); },
+                        child: ListView.separated(
+                          padding:          const EdgeInsets.symmetric(vertical: 8),
+                          itemCount:        _filtered(_notifs, context.watch<NotificationProvider>().activeFilter).length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (_, i) {
+                            final n     = _filtered(_notifs, context.watch<NotificationProvider>().activeFilter)[i];
+                            final color = _color(n.type);
+                            return Dismissible(
+                              key: Key(n.notifId),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                color: AppColors.error,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                child: const Icon(Icons.delete_rounded,
+                                    color: Colors.white),
+                              ),
+                              onDismissed: (_) {
+                                context.read<NotificationProvider>()
+                                    .deleteNotification(n.notifId);
+                                setState(() => _notifs.removeWhere(
+                                    (x) => x.notifId == n.notifId));
+                              },
+                              child: InkWell(
+                                onTap: () => _onTap(n),
+                                child: Container(
                           color: n.isRead ? null : color.withOpacity(0.05),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
@@ -256,11 +274,74 @@ class _State extends State<NotificationsScreen> {
                               ),
                             ],
                           ),
-                        ),
-                      );
+                                        ),
+                              ),
+                            );
                     },
                   ),
                 ),
+          ),
+        ]),
+  );
+  }
+
+  // Filter helper
+  List<NotificationModel> _filtered(
+      List<NotificationModel> all, String? filter) {
+    if (filter == null) return all;
+    return all.where((n) {
+      final t = n.type.toLowerCase();
+      switch (filter) {
+        case 'booking': return n.isBookingType;
+        case 'chat':    return n.isChatType;
+        case 'reel':    return t.contains('reel') || t.contains('approved') || t.contains('rejected');
+        case 'system':  return !n.isBookingType && !n.isChatType &&
+            !t.contains('reel');
+        default: return true;
+      }
+    }).toList();
+  }
+}
+
+// ── Category filter chips ─────────────────────────────────────────────────────
+class _FilterChips extends StatelessWidget {
+  final NotificationProvider notifProv;
+  const _FilterChips({required this.notifProv});
+
+  @override
+  Widget build(BuildContext context) {
+    final cats = [
+      (null,      'All'),
+      ('booking', 'Bookings'),
+      ('chat',    'Chats'),
+      ('reel',    'Reels'),
+      ('system',  'System'),
+    ];
+    return Container(
+      color: AppColors.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(children: cats.map((e) {
+          final selected = notifProv.activeFilter == e.$1;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(e.$2),
+              selected: selected,
+              onSelected: (_) =>
+                  notifProv.setFilter(selected ? null : e.$1),
+              selectedColor: AppColors.primarySurface,
+              checkmarkColor: AppColors.primary,
+              labelStyle: TextStyle(
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          );
+        }).toList()),
+      ),
     );
   }
 }

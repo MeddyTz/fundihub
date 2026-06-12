@@ -323,6 +323,13 @@ class _LiveStats extends StatelessWidget {
               s.totalBookings > 0
                   ? '${s.completed * 100 ~/ s.totalBookings}% rate'
                   : '0% rate'),
+          _SC(
+              'Approved Reels',
+              '${s.approvedReels}',
+              Icons.check_circle_outline_rounded,
+              const LinearGradient(
+                  colors: [Color(0xFF00695C), Color(0xFF26A69A)]),
+              '${s.totalReels} total'),
         ];
 
         return Padding(
@@ -389,6 +396,11 @@ class _LiveStats extends StatelessWidget {
             .where('status', isEqualTo: 'pending')
             .count()
             .get(),
+        db
+            .collection('reels')
+            .where('status', isEqualTo: 'approved')
+            .count()
+            .get(),
       ]);
       return _Stats(
         clients: results[0].count ?? 0,
@@ -399,6 +411,7 @@ class _LiveStats extends StatelessWidget {
         completed: results[5].count ?? 0,
         totalReels: results[6].count ?? 0,
         pendingReels: results[7].count ?? 0,
+        approvedReels: results[8].count ?? 0,
       );
     } catch (_) {
       return const _Stats();
@@ -408,7 +421,7 @@ class _LiveStats extends StatelessWidget {
 
 class _Stats {
   final int clients, fundis, totalBookings, pending, active, completed,
-      totalReels, pendingReels;
+      totalReels, pendingReels, approvedReels;
   const _Stats({
     this.clients = 0,
     this.fundis = 0,
@@ -418,6 +431,7 @@ class _Stats {
     this.completed = 0,
     this.totalReels = 0,
     this.pendingReels = 0,
+    this.approvedReels = 0,
   });
   int get totalUsers => clients + fundis;
 }

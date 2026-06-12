@@ -7,31 +7,25 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:108838349548:android:967a14dd47c599388593c9",
-        "android_client_info": {
-          "package_name": "com.example.fundihub"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:108838349548:android:ba19db7a32c3072a8593c9",
         "android_client_info": {
           "package_name": "com.fundihub.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "108838349548-7aga91bf8abg2m9r6to926c0qeqiruko.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fundihub.app",
+            "certificate_hash": "bee4e094e333c5c6c33f7c10fa51c48c08061227"
+          }
+        },
+        {
+          "client_id": "108838349548-9tlaj41nda16u8hte5maekmmfos5dr7q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
@@ -39,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "108838349548-9tlaj41nda16u8hte5maekmmfos5dr7q.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "108838349548-31hkbqdh2ejcmfsbe1gva7kg2uaveqc6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fundihub"
+              }
+            }
+          ]
         }
       }
     },
@@ -50,7 +56,12 @@
           "package_name": "com.meddytz.fundihub"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "108838349548-9tlaj41nda16u8hte5maekmmfos5dr7q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCTVon7pKEx0GuYJ2RD64yPQYDKFwh0wlI"
@@ -58,7 +69,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "108838349548-9tlaj41nda16u8hte5maekmmfos5dr7q.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "108838349548-31hkbqdh2ejcmfsbe1gva7kg2uaveqc6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fundihub"
+              }
+            }
+          ]
         }
       }
     }

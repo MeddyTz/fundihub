@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -49,6 +50,31 @@ class _ClientMainShellState extends State<ClientMainShell>
     super.dispose();
   }
 
+  DateTime? _lastBackPress;
+
+  Future<bool> _onBackInvoked() async {
+    // If not on the first tab, navigate home first
+    if (_idx != 0) {
+      setState(() => _idx = 0);
+      return false; // don't pop
+    }
+    final now = DateTime.now();
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return false; // don't pop
+    }
+    // Second press within 2 s → exit
+    return true;
+  }
+
   void _subscribe() {
     // If starting on Reels tab, mark active
     if (_idx == 2) {
@@ -76,12 +102,12 @@ class _ClientMainShellState extends State<ClientMainShell>
     setState(() => _idx = i);
   }
 
-  List<Widget> get _screens => const [
-        ClientDashboardScreen(),
-        ClientBookingsScreen(),
-        ReelsScreen(),
-        ChatListScreen(),
-        ClientProfileScreen(),
+  List<Widget> _buildScreens(bool isGuest) => [
+        const ClientDashboardScreen(),
+        isGuest ? const _GuestWall() : const ClientBookingsScreen(),
+        const ReelsScreen(),
+        isGuest ? const _GuestWall() : const ChatListScreen(),
+        isGuest ? const _GuestWall() : const ClientProfileScreen(),
       ];
 
   @override
@@ -138,9 +164,21 @@ class _ClientMainShellState extends State<ClientMainShell>
 
     final bottom = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(index: _idx, children: _screens),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onBackInvoked();
+        if (shouldPop && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(
+          index: _idx,
+          children: _buildScreens(auth.isGuest),
+        ),
       bottomNavigationBar: Container(
         margin: EdgeInsets.fromLTRB(10, 0, 10, bottom + 10),
         decoration: BoxDecoration(
@@ -176,6 +214,7 @@ class _ClientMainShellState extends State<ClientMainShell>
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -295,3 +334,115 @@ class _CNavTab extends StatelessWidget {
     );
   }
 }
+
+
+// ── Guest Login Wall ──────────────────────────────────────────────────────────
+// Shown when a guest taps a restricted tab (Bookings, Chat, Profile).
+
+class _GuestWall extends StatelessWidget {
+  const _GuestWall();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_outline_rounded,
+                    size: 52, color: AppColors.primary),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                l10n.sw
+                    ? 'Ingia au Jisajili Kuendelea'
+                    : 'Create an account or login to continue',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                l10n.sw
+                    ? 'Unahitaji akaunti kufanya miadi, kutuma ujumbe, au kuona profaili yako.'
+                    : 'You need an account to make bookings, send messages, or view your profile.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 36),
+              // Login
+              ElevatedButton(
+                onPressed: () => context.go('/login'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text(
+                  l10n.sw ? 'Ingia' : 'Login',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Create Account
+              OutlinedButton(
+                onPressed: () => context.go('/register'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text(
+                  l10n.sw ? 'Fungua Akaunti' : 'Create Account',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Continue Browsing
+              TextButton(
+                onPressed: () {
+                  // Snap back to Home tab (index 0)
+                  // We use a simple notification-like approach via the parent
+                  // state — easier: just navigate to dashboard
+                  context.go('/client/dashboard');
+                },
+                child: Text(
+                  l10n.sw ? 'Endelea Kutazama' : 'Continue Browsing',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

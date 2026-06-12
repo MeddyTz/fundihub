@@ -59,6 +59,8 @@ class UserModel {
   bool get isAdmin => role == AppConstants.roleAdmin;
   bool get isActive => accountStatus == AppConstants.statusActive;
   bool get isSuspended => accountStatus == AppConstants.statusSuspended;
+  /// True when this account has been soft-deleted.
+  bool get isDeleted   => accountStatus == 'deleted';
   bool get isPremium => plan == AppConstants.planPremium;
 
   factory UserModel.fromMap(Map<String, dynamic> map) => UserModel(

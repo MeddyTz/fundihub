@@ -208,7 +208,21 @@ class _ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnread = unreadCount > 0 && _isIncoming();
+    // Primary: use the provider-computed unread count.
+    // Fallback: if the in-memory count is 0 but the last message was
+    // sent by the other person after our last read timestamp, treat it
+    // as unread. This covers the case where totalUnreadStream (the tab
+    // badge) detects unread but the ChatSummary object was zeroed by
+    // _applyReadClearHold or has stale data.
+    final lastRead = chat.lastReadAt[myId];
+    final otherSentLast = chat.lastSenderId.isNotEmpty &&
+        chat.lastSenderId != myId;
+    final notReadYet = lastRead == null ||
+        chat.lastMessageAt.isAfter(lastRead);
+    final fallbackUnread = otherSentLast && notReadYet ? 1 : 0;
+    final effectiveUnread =
+        unreadCount > 0 ? unreadCount : fallbackUnread;
+    final hasUnread = effectiveUnread > 0;
 
     return Material(
       color: Colors.transparent,
@@ -334,7 +348,7 @@ class _ChatTile extends StatelessWidget {
                               child: AppLoader(size: 18, color: AppColors.primary),
                             )
                           else if (hasUnread)
-                            _UnreadBadge(count: unreadCount),
+                            _UnreadBadge(count: effectiveUnread),
                         ],
                       ),
                     ],

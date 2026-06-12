@@ -398,15 +398,20 @@ class ChatService {
 
     // FIX: Reset unread counter only for this specific chat.
     // Also record lastReadAt for read receipts.
-    await chatRef.set(
-      {
-        'unreadCounts.$uid': 0,
-        'lastReadAt.$uid': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'participants': FieldValue.arrayUnion([uid]),
-      },
-      SetOptions(merge: true),
-    );
+    try {
+      await chatRef.set(
+        {
+          'unreadCounts.$uid': 0,
+          'lastReadAt.$uid': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      dev.log('[ChatService] markMessagesSeen chat update error: $e',
+          name: 'CHAT');
+      rethrow;
+    }
 
     // Mark individual message docs as seen.
     // FIX: This now correctly uses sender != myId filter so receiver

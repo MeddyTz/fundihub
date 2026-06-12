@@ -286,10 +286,18 @@ class _FundiDashboardScreenState extends State<FundiDashboardScreen> {
                         ),
                         const SizedBox(width: AppTheme.spaceMD),
                         _ActionButton(
-                          icon:  Icons.person_rounded,
-                          label: l10n.profile,
-                          color: AppColors.secondary,
-                          onTap: () => context.push('/edit-profile'),
+                          icon:  Icons.photo_library_rounded,
+                          label: l10n.sw ? 'Picha za Kazi' : 'Work Photos',
+                          color: const Color(0xFF00897B),
+                          onTap: () async {
+                            final result = await context
+                                .push<String?>('/fundi/work-photos');
+                            if (result == 'workPhotos' &&
+                                context.mounted) {
+                              // Navigate to profile Work Photos tab
+                              context.push('/fundi/profile');
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -618,7 +626,11 @@ class _VideoStatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov  = context.watch<ReelProvider>();
-    final reels = prov.fundiReels;
+    // Filter strictly by fundiId so stale cached reels from another
+    // fundi's profile never pollute this fundi's own stats.
+    final reels = prov.fundiReels
+        .where((r) => r.fundiId == fundiId)
+        .toList();
 
     final totalReels    = reels.length;
     if (totalReels == 0) return const SizedBox.shrink();
@@ -626,8 +638,13 @@ class _VideoStatsCard extends StatelessWidget {
     final totalViews    = reels.fold<int>(0, (s, r) => s + r.viewsCount);
     final totalLikes    = reels.fold<int>(0, (s, r) => s + r.likesCount);
     final totalComments = reels.fold<int>(0, (s, r) => s + r.commentsCount);
+    final totalSaves    = reels.fold<int>(0, (s, r) => s + r.savesCount);
     final approved      = reels.where((r) => r.isApproved).length;
     final pending       = reels.where((r) => r.isPending).length;
+    // Top reel by views
+    final topReel = reels.isNotEmpty
+        ? reels.reduce((a, b) => a.viewsCount > b.viewsCount ? a : b)
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -667,9 +684,37 @@ class _VideoStatsCard extends StatelessWidget {
                 _fmt(totalLikes),    'Likes',    Colors.pinkAccent),
             _VStat(Icons.chat_bubble_outline_rounded,
                 _fmt(totalComments), 'Comments', AppColors.secondary),
+            _VStat(Icons.bookmark_border_rounded,
+                _fmt(totalSaves),    'Saves',    AppColors.secondary),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
             _VStat(Icons.check_circle_outline_rounded,
                 '$approved/$totalReels', 'Approved', AppColors.success),
           ]),
+          if (topReel != null) ...[
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Row(children: [
+              const Icon(Icons.emoji_events_rounded,
+                  size: 14, color: AppColors.warning),
+              const SizedBox(width: 6),
+              Text('Top Reel',
+                  style: AppTextStyles.caption
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text('${_fmt(topReel!.viewsCount)} views',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textSecondary)),
+            ]),
+            const SizedBox(height: 4),
+            Text(topReel!.caption.isNotEmpty
+                ? topReel!.caption
+                : 'Untitled Reel',
+                style: AppTextStyles.bodySmall,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
           if (pending > 0) ...[
             const SizedBox(height: 10),
             Container(

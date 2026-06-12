@@ -52,6 +52,31 @@ class _FundiMainShellState extends State<FundiMainShell>
     super.dispose();
   }
 
+  DateTime? _lastBackPress;
+
+  Future<bool> _onBackInvoked() async {
+    // If not on the first tab, navigate home first
+    if (_idx != 0) {
+      setState(() => _idx = 0);
+      return false; // don't pop
+    }
+    final now = DateTime.now();
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return false; // don't pop
+    }
+    // Second press within 2 s → exit
+    return true;
+  }
+
   void _subscribe() {
     final uid = context.read<AuthProvider>().userModel?.uid;
     if (uid == null || uid.isEmpty) return;
@@ -140,9 +165,18 @@ class _FundiMainShellState extends State<FundiMainShell>
 
     final bottom = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(index: _idx, children: _screens),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onBackInvoked();
+        if (shouldPop && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(index: _idx, children: _screens),
       bottomNavigationBar: Container(
         margin: EdgeInsets.fromLTRB(10, 0, 10, bottom + 10),
         decoration: BoxDecoration(
@@ -177,6 +211,7 @@ class _FundiMainShellState extends State<FundiMainShell>
           ),
         ),
       ),
+    ),
     );
   }
 }

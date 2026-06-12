@@ -112,6 +112,33 @@ class _ReelsScreenState extends State<ReelsScreen>
       );
     }
 
+    // Retry screen
+    if (prov.feedError && reels.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_rounded,
+                size: 64, color: Colors.white38),
+            const SizedBox(height: 16),
+            const Text('Could not load reels',
+                style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => prov.refreshApprovedReels(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        )),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
@@ -134,7 +161,7 @@ class _ReelsScreenState extends State<ReelsScreen>
             ),
           ),
 
-          // ── Full-screen pager ──────────────────────────────────────
+          // ── Full-screen pager ─────────────────────────────────
           PageView.builder(
             controller:    _pageController,
             scrollDirection: Axis.vertical,
@@ -154,7 +181,7 @@ class _ReelsScreenState extends State<ReelsScreen>
               }
               return _ReelPage(
                 reel:      reels[i],
-                isActive:  tabActive && i == _currentPage,
+                isActive:  tabActive && (i == _currentPage || i == _currentPage + 1),
                 myId:      myId,
                 isFundi:   isFundi,
               );
@@ -314,6 +341,8 @@ class _ReelPageState extends State<_ReelPage>
   }
 
   void _onDoubleTap() {
+    final auth = context.read<AuthProvider>();
+    if (auth.isGuest) { _showGuestPrompt(context); return; }
     final prov = context.read<ReelProvider>();
     if (!prov.isLiked(widget.reel.reelId)) {
       prov.toggleLike(widget.reel.reelId);
@@ -508,8 +537,11 @@ class _BottomInfo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Fundi row
-        Row(
+        // Fundi row — tap to open that fundi's profile
+        GestureDetector(
+          onTap: () => context.push(
+              '/client/fundi-by-id', extra: reel.fundiId),
+          child: Row(
           children: [
             AppAvatar(
               imageUrl: reel.fundiProfileImage,
@@ -569,6 +601,7 @@ class _BottomInfo extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
         if (reel.caption.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -642,6 +675,9 @@ class _ActionColumn extends StatelessWidget {
           color:      liked ? Colors.pinkAccent : Colors.white,
           onTap: () {
             HapticFeedback.lightImpact();
+            if (context.read<AuthProvider>().isGuest) {
+              _showGuestPrompt(context); return;
+            }
             prov.toggleLike(reel.reelId);
             // Trigger heart animation
             likeAnim
@@ -1160,6 +1196,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final text = _ctrl.text.trim();
     if (text.isEmpty || _posting || widget.myId.isEmpty) return;
     setState(() => _posting = true);
+    if (context.read<AuthProvider>().isGuest) {
+      _showGuestPrompt(context); return;
+    }
     await context.read<ReelProvider>().addComment(
       reelId:    widget.reelId,
       userId:    widget.myId,
@@ -1624,4 +1663,63 @@ class _CommentMenuState extends State<_CommentMenu> {
       },
     );
   }
+}
+
+// ── Guest prompt ──────────────────────────────────────────────────────────────
+
+void _showGuestPrompt(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                shape: BoxShape.circle),
+            child: const Icon(Icons.lock_outline_rounded,
+                size: 28, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Create an account to continue',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Sign up to like reels, comment, save, book fundis and more.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/register');
+              },
+              style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text('Create Account',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              GoRouter.of(context).go('/login');
+            },
+            child: const Text('Sign In'),
+          ),
+        ]),
+      ),
+    ),
+  );
 }

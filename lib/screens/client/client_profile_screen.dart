@@ -158,6 +158,27 @@ class ClientProfileScreen extends StatelessWidget {
                   sub: 'Invite friends to FundiHub',
                   onTap: () => Share.share(l10n.shareMessage),
                 ),
+                const SizedBox(height: AppTheme.spaceSM),
+                _Tile(
+                  icon: Icons.star_rounded,
+                  title: 'Rate Us',
+                  sub: 'Enjoy FundiHub? Leave us a review',
+                  onTap: () => _rateUs(context),
+                ),
+                const SizedBox(height: AppTheme.spaceSM),
+                _Tile(
+                  icon: Icons.info_outline_rounded,
+                  title: 'About FundiHub',
+                  sub: 'Version, team & mission',
+                  onTap: () => _showAbout(context),
+                ),
+                const SizedBox(height: AppTheme.spaceSM),
+                _Tile(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Privacy Policy',
+                  sub: 'How we handle your data',
+                  onTap: () => _openPrivacy(context),
+                ),
 
                 const SizedBox(height: AppTheme.space3XL),
 
@@ -167,6 +188,14 @@ class ClientProfileScreen extends StatelessWidget {
                   leadingIcon: Icons.logout,
                   onPressed: () => auth.logout(),
                 ),
+                const SizedBox(height: AppTheme.spaceMD),
+                AppButton(
+                  label: 'Delete Account',
+                  type: AppButtonType.outline,
+                  leadingIcon: Icons.delete_forever_rounded,
+                  onPressed: () =>
+                      _confirmDeleteAccount(context, auth, l10n),
+                ),
                 SizedBox(height: MediaQuery.of(context).padding.bottom + 96),
               ],
             ),
@@ -174,6 +203,86 @@ class ClientProfileScreen extends StatelessWidget {
         ),
       ]),
     );
+  }
+
+  Future<void> _rateUs(BuildContext context) async {
+    final uri = Uri.parse(
+        'https://play.google.com/store/apps/details'
+        '?id=com.fundihub.app');
+    if (await canLaunchUrl(uri)) {
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showAbout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXL)),
+        title: const Text('About FundiHub'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('FundiHub connects clients with skilled '
+                'professionals across Tanzania.'),
+            SizedBox(height: 10),
+            Text('Version: 1.0.0'),
+            Text('Built by TzTech'),
+            Text('Contact: tztech26@gmail.com'),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: Navigator.of(context).pop,
+              child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPrivacy(BuildContext context) async {
+    final uri = Uri.parse('https://fundihub.co.tz/privacy');
+    if (await canLaunchUrl(uri)) {
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('fundihub.co.tz/privacy')));
+    }
+  }
+
+  Future<void> _confirmDeleteAccount(
+      BuildContext context, AuthProvider auth, AppL10n l10n) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXL)),
+        title: const Text('Delete Account?'),
+        content: const Text(
+            'Your account will be permanently deactivated.\n\n'
+            'All your bookings and data will be hidden.\n\n'
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete My Account')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final err = await auth.deleteAccount();
+    if (err != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(err),
+          backgroundColor: AppColors.error));
+    }
   }
 
   void _showHelp(BuildContext context, AppL10n l10n) {
