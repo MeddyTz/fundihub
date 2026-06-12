@@ -13,17 +13,28 @@ workflows:
         script: |
           flutter clean
           rm -rf ios/Pods
-          rm -f ios/Podfile.lock
-          rm -rf $HOME/Library/Developer/Xcode/DerivedData
+          rm -rf ios/Podfile.lock
+          rm -rf ~/Library/Developer/Xcode/DerivedData
 
       - name: Get packages
-        script: |
-          flutter pub get
+        script: flutter pub get
 
       - name: Force iOS 15 target
         script: |
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/Runner.xcodeproj/project.pbxproj
-          grep IPHONEOS_DEPLOYMENT_TARGET ios/Runner.xcodeproj/project.pbxproj
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+
+          podfile = Path("ios/Podfile")
+          text = podfile.read_text()
+
+          if "platform :ios" in text:
+              import re
+              text = re.sub(r"platform :ios, ['\"]\d+(\.\d+)?['\"]", "platform :ios, '15.0'", text)
+          else:
+              text = "platform :ios, '15.0'\n" + text
+
+          podfile.write_text(text)
+          PY
 
       - name: Install pods
         script: |
@@ -31,9 +42,9 @@ workflows:
           pod install --repo-update
           cd ..
 
-      - name: Build iOS no codesign
+      - name: Build iOS simulator
         script: |
-          flutter build ios --debug --no-codesign
+          flutter build ios --debug --simulator
 
     artifacts:
-      - build/ios/iphoneos/*.app
+      - build/ios/iphonesimulator/Runner.app
